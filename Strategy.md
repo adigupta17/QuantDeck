@@ -25,3 +25,17 @@
   
   Sell Signal: RSI rises above 70 and begins turning downward.
 
+
+## Strategy 3: Bollinger Bands (Volatility Breakout / Mean Reversion)
+  Bollinger Bands measure market volatility by creating an upper and lower boundary around a moving average.
+
+  How it works: Calculate a 20-day Simple Moving Average (the middle band), then place the upper and lower bands 2 standard deviations away. Since ~95% of price action typically stays within 2 standard deviations, touching or breaking a band indicates an extreme move.
+
+  Mean Reversion Approach:
+
+  Buy Signal: Price touches or drops below the Lower Band (expects price to bounce back to the middle).
+
+  Sell Signal: Price touches or rises above the Upper Band (expects price to fall back to the middle).
+
+## Non Price based strategies:
+volume breakout (checking for institutional buying), strategies involving referring to a volatility
