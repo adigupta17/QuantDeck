@@ -14,3 +14,8 @@ end_date = st.sidebar.date_input("End Date", value=pd.to_datetime("2024-01-01"))
 st.sidebar.subheader("SMA Crossover Parameters")
 fast_win = st.sidebar.slider("Fast SMA Window", min_value=5, max_value=50, value=20)
 slow_win = st.sidebar.slider("Slow SMA Window", min_value=20, max_value=200, value=50)
+
+#fetch data
+if st.sidebar.button("Run Strategy"):
+    with st.spinner("Fetching market data..."):
+        df = get_stock_data(ticker, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
