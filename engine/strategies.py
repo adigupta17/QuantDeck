@@ -24,4 +24,22 @@ def moving_average_crossover(
 
     return data
 
+def relative_strength_index(df: pd.DataFrame, window: int = 14, oversold_threshold: float = 30.0, overbought_threshold: float = 70.0, ) -> pd.DataFrame:
+    """
+        - Buy Signal (1): RSI crosses above oversold threshold (e.g., 30).
+        - Sell Signal (-1): RSI crosses below overbought threshold (e.g., 70).
 
+       Returns:
+        pd.DataFrame: DataFrame with RSI values, positions, and trade signals.
+    """
+    data = df.copy()
+
+    delta = data["Close"].diff()
+
+    gain = delta.clip(lower=0)
+    loss = -delta.clip(upper=0)
+
+    avg_gain = gain.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
+    avg_loss = loss.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
+
+    
