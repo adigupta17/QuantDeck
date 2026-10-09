@@ -42,4 +42,19 @@ def relative_strength_index(df: pd.DataFrame, window: int = 14, oversold_thresho
     avg_gain = gain.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
     avg_loss = loss.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
 
+    rs = avg_gain / avg_loss.replace(0, np.nan)
+    data["rsi"] = 100 - (100 / (1 + rs))
+
+    # when holding position (entered when RSI < oversold, exiting when RSI > overbought)
+    data["position"] = np.nan
+    data.loc[data["rsi"] < oversold_threshold, "position"] = 1
+    data.loc[data["rsi"] > overbought_threshold, "position"] = 0
+
+    # Forward fill position state across hold days
+    data["position"] = data["position"].ffill().fillna(0)
+
+    data["signal"] = data["position"].diff().fillna(0)
+
+    return data
+
     
