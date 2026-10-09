@@ -19,3 +19,16 @@ slow_win = st.sidebar.slider("Slow SMA Window", min_value=20, max_value=200, val
 if st.sidebar.button("Run Strategy"):
     with st.spinner("Fetching market data..."):
         df = get_stock_data(ticker, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+
+    if not df.empty:
+        #moving average crossover strategy
+        results = moving_average_crossover(df, fast_window=fast_win, slow_window=slow_win)
+
+        st.subheader(f"Strategy Results: {ticker}")
+        st.line_chart(results[["Close", "fast_sma", "slow_sma"]])
+
+        #display signal data
+        st.subheader("Data Preview & Signals")
+        st.dataframe(results.tail(15))
+    else:
+        st.error("Failed to load ticker data. Check symbol or date range.") 
