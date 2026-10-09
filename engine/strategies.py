@@ -1,60 +1,72 @@
+from dataclasses import dataclass, field
+
 import numpy as np
 import pandas as pd
 
 
-def moving_average_crossover(
-    df: pd.DataFrame, fast_window: int = 20, slow_window: int = 50 ) -> pd.DataFrame:
-    """
-        - Buy Signal (1): Fast SMA crosses above Slow SMA 
-        - Sell Signal (-1): Fast SMA crosses below Slow SMA 
+@dataclass
+class StrategyResult:
+    position: pd.Series
+    overlays: dict = field(default_factory=dict)  
+    panel: dict | None = None                     
 
-    Returns:
-        pd.DataFrame: DataFrame with SMAs, regime positions, and trade signals.
-    """
-    data = df.copy()
+def sma_crossover(df, fast=20, slow=50) -> StrategyResult:
+    if fast >= slow:
+        raise ValueError("Fast window must be smaller than slow window.")
+    f = df["Close"].rolling(fast).mean()
+    s = df["Close"].rolling(slow).mean()
+    pos = ((f > s) & f.notna() & s.notna()).astype(int)
+    return StrategyResult(pos, {f"SMA {fast}": f, f"SMA {slow}": s})
 
-    data["fast_sma"] = data["Close"].rolling(window=fast_window).mean()
-    data["slow_sma"] = data["Close"].rolling(window=slow_window).mean()
 
-    
-    data["position"] = np.where(data["fast_sma"] > data["slow_sma"], 1, 0)
+def rsi_series(close: pd.Series, period=14) -> pd.Series:
+    """Wilder's RSI."""
+    d = close.diff()
+    gain = d.clip(lower=0).ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    loss = (-d.clip(upper=0)).ewm(alpha=1 / period, min_periods=period, adjust=False).mean()
+    rsi = 100 - 100 / (1 + gain / loss)
+    return rsi.where(~((loss == 0) & gain.notna()), 100.0)
 
-    # 3. Generate Signal Crossovers (+1 Buy, -1 Sell, 0 Hold)
-    data["signal"] = data["position"].diff().fillna(0)
 
-    return data
+def rsi_strategy(df, period=14, oversold=30, overbought=70) -> StrategyResult:
+    if oversold >= overbought:
+        raise ValueError("Oversold level must be below overbought level.")
+    rsi = rsi_series(df["Close"], period)
+    held, out = 0, []
+    for v in rsi.to_numpy():
+        if not np.isnan(v):
+            if held == 0 and v < oversold:
+                held = 1
+            elif held == 1 and v > overbought:
+                held = 0
+        out.append(held)
+    return StrategyResult(
+        pd.Series(out, index=df.index), panel={"name": "RSI", "series": rsi, "levels": [oversold, overbought]}
+    )
 
-def relative_strength_index(df: pd.DataFrame, window: int = 14, oversold_threshold: float = 30.0, overbought_threshold: float = 70.0, ) -> pd.DataFrame:
-    """
-        - Buy Signal (1): RSI crosses above oversold threshold (e.g., 30).
-        - Sell Signal (-1): RSI crosses below overbought threshold (e.g., 70).
 
-       Returns:
-        pd.DataFrame: DataFrame with RSI values, positions, and trade signals.
-    """
-    data = df.copy()
+def bollinger_bands(df, window=20, num_std=2.0, exit_at="Middle band") -> StrategyResult:
+    """Buy when close drops below the lower band; sell at the middle (or upper) band."""
+    c = df["Close"]
+    mid = c.rolling(window).mean()
+    sd = c.rolling(window).std()
+    upper, lower = mid + num_std * sd, mid - num_std * sd
+    exit_line = mid if exit_at == "Middle band" else upper
+    held, out = 0, []
+    for price, lo, ex in zip(c.to_numpy(), lower.to_numpy(), exit_line.to_numpy()):
+        if not np.isnan(lo):
+            if held == 0 and price < lo:
+                held = 1
+            elif held == 1 and price > ex:
+                held = 0
+        out.append(held)
+    return StrategyResult(
+        pd.Series(out, index=df.index), {"Upper band": upper, "Middle band": mid, "Lower band": lower}
+    )
 
-    delta = data["Close"].diff()
 
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-
-    avg_gain = gain.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1 / window, min_periods=window, adjust=False).mean()
-
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    data["rsi"] = 100 - (100 / (1 + rs))
-
-    # when holding position (entered when RSI < oversold, exiting when RSI > overbought)
-    data["position"] = np.nan
-    data.loc[data["rsi"] < oversold_threshold, "position"] = 1
-    data.loc[data["rsi"] > overbought_threshold, "position"] = 0
-
-    # Forward fill position state across hold days
-    data["position"] = data["position"].ffill().fillna(0)
-
-    data["signal"] = data["position"].diff().fillna(0)
-
-    return data
-
-    
+STRATEGIES = {
+    "Moving Average Crossover": sma_crossover,
+    "RSI": rsi_strategy,
+    "Bollinger Bands": bollinger_bands,
+}
