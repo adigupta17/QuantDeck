@@ -41,29 +41,32 @@ if st.sidebar.button("Run Strategy"):
         df = get_stock_data(ticker, start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
 
     if not df.empty:
-        #moving average crossover strategy
-        results = moving_average_crossover(df, fast_window=fast_win, slow_window=slow_win)
+        #execute strategy
+        strategy_func = STRATEGIES[strategy_name]
+        result = strategy_func(df, **strat_params)
+        
+        #run backtest simulation
+        equity_curve, trades_df = run_backtest(df, result.position, initial_cash=initial_cash, commission_pct=commission_pct)
 
-        st.subheader(f"Strategy Results: {ticker}")
-        st.line_chart(results[["Close", "fast_sma", "slow_sma"]])
+        #metrics summary
+        st.subheader(f"Performance Summary: {ticker} ({strategy_name})")
+        final_equity = equity_curve.iloc[-1]
+        pnl_pct = ((final_equity - initial_cash) / initial_cash) * 100
+        
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Initial Capital", f"${initial_cash:,.2f}")
+        col2.metric("Final Equity", f"${final_equity:,.2f}", f"{pnl_pct:.2f}%")
+        col3.metric("Total Trades", len(trades_df))
 
-        #display signal data
-        st.subheader("Data Preview & Signals")
-        st.dataframe(results.tail(15))
+        #equity curve chart
+        st.subheader("Portfolio Equity Curve")
+        st.line_chart(equity_curve)
 
-        #RSI strategy
-        result = rsi_strategy(df, period=14, oversold=30, overbought=70)
-        positions = result.position
-        rsi_data = result.panel["series"]
-        print(result.panel["levels"])  
+        st.subheader("Data Preview & Generated Signals")
+        preview_df = df.copy()
+        preview_df["Position"] = result.position
+        st.dataframe(preview_df.tail(15), use_container_width=True)
 
-        #bollinger bands strategy
-        result = bollinger_bands(df, window=20, num_std=2.0, exit_at="Middle band")
-        positions = result.position
-        upper_band = result.overlays["Upper band"]
-        middle_band = result.overlays["Middle band"]
-        lower_band = result.overlays["Lower band"]
-
-
+       
     else:
         st.error("Failed to load ticker data. Check symbol or date range.") 
