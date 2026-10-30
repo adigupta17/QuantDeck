@@ -27,8 +27,7 @@ def style(fig, height=300):
     
     fig.update_layout(
         height=height, margin=dict(l=4, r=4, t=26, b=4), hovermode="x unified",
-        paper_bgcolor="rgba(0,0,0,0)", 
-    )
+        paper_bgcolor="rgba(0,0,0,0)", )
     ax = dict(gridcolor="#1f2530", zerolinecolor="#2a3040", linecolor="#1f2530",
               tickfont=dict(color="#4a5060"), automargin=True)
     fig.update_xaxes(**ax)
