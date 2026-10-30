@@ -8,6 +8,18 @@ CSS = """
 .stApp, .stApp input, .stApp button, .stApp label, .stApp p {font-family:'IBM Plex Mono',monospace;}
 .stApp {background:var(--bg);}
 header[data-testid="stHeader"] {background:transparent;}
+#MainMenu, footer {visibility:hidden;}
+.block-container {padding:1.2rem 1.6rem 2rem; max-width:100%;}
+[data-testid="stSidebar"] {background:var(--bg2); border-right:1px solid var(--border);}
+[data-testid="stSidebar"] .block-container, [data-testid="stSidebarUserContent"] {padding-top:1rem;}
+[data-testid="stWidgetLabel"] p {font-size:.72rem; color:var(--text2);}
+[data-baseweb="input"], [data-baseweb="select"] > div, [data-baseweb="base-input"] {
+  background:var(--bg3) !important; border-color:var(--border2) !important; border-radius:2px !important;}
+[data-testid="stSliderThumbValue"], [data-testid="stThumbValue"] {color:var(--accent) !important; font-size:.75rem;}
+[data-testid="stSliderTickBarMin"], [data-testid="stSliderTickBarMax"] {color:var(--text3) !important;}
+[data-testid="stVerticalBlockBorderWrapper"] {background:var(--bg2); border:1px solid var(--border) !important; border-radius:2px;}
+.sec {font-size:.65rem; letter-spacing:.14em; color:var(--text3); text-transform:uppercase;
+  border-bottom:1px solid var(--border); padding-bottom:.35rem; margin:1.2rem 0 .7rem;}
 </style>
 """
 
