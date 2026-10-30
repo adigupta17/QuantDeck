@@ -1,8 +1,11 @@
 import streamlit as st
+import pandas as pd
 from engine.data_fetcher import get_stock_data
-from engine.strategies import moving_average_crossover
-from engine.strategies import rsi_strategy
-from engine.strategies import bollinger_bands
+from engine.strategies import STRATEGIES
+from engine.backtester import run_backtest
+
+#Sample ticker list
+TICKER_LIST = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "SPY"]
 
 #page setup
 st.set_page_config(page_title="QuantDeck Dashboard", layout="wide")
@@ -10,7 +13,11 @@ st.title("QuantDeck Test")
 
 #side bar and parameters
 st.sidebar.header("Configuration")
-ticker = st.sidebar.selectbox("Ticker Symbol", TICKER_LIST, index=TICKER_LIST.index("AAPL") if "AAPL" in TICKER_LIST else 0)
+ticker = st.sidebar.selectbox(
+    "Ticker Symbol",
+    TICKER_LIST,
+    index=TICKER_LIST.index("AAPL") if "AAPL" in TICKER_LIST else 0,
+)
 start_date = st.sidebar.date_input("Start Date", value=pd.to_datetime("2023-01-01"))
 end_date = st.sidebar.date_input("End Date", value=pd.to_datetime("2024-01-01"))
 st.sidebar.subheader("Strategy Selection")
@@ -67,6 +74,16 @@ if st.sidebar.button("Run Strategy"):
         preview_df["Position"] = result.position
         st.dataframe(preview_df.tail(15), use_container_width=True)
 
+        # Plot optional strategy overlays/panels if available
+        if result.panel:
+            st.subheader(f"{result.panel['name']} Indicator Panel")
+            panel_df = pd.DataFrame({"Indicator": result.panel["series"]}, index=df.index)
+            st.line_chart(panel_df)
+
+        st.subheader("Data Preview & Generated Signals")
+        preview_df = df.copy()
+        preview_df["Position"] = result.position
+        st.dataframe(preview_df.tail(15), use_container_width=True)
        
     else:
         st.error("Failed to load ticker data. Check symbol or date range.") 
