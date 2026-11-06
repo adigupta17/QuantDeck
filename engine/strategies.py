@@ -64,9 +64,31 @@ def bollinger_bands(df, window=20, num_std=2.0, exit_at="Middle band") -> Strate
         pd.Series(out, index=df.index), {"Upper band": upper, "Middle band": mid, "Lower band": lower}
     )
 
+def relative_volume_breakout(df, volume_window=20, rvol_threshold=2.0) -> StrategyResult:
+    c = df["Close"]
+    v = df["Volume"]
+    vol_sma = v.rolling(volume_window).mean()
+    rvol = v / vol_sma.replace(0, np.nan)
+    price_change = c.diff()
+
+    held, out = 0, []
+    for r, dp in zip(rvol.to_numpy(), price_change.to_numpy()):
+        if not np.isnan(r):
+            if held == 0 and r >= rvol_threshold and dp > 0:
+                held = 1
+            elif held == 1 and (r < 1.0 or dp < 0):
+                held = 0
+        out.append(held)
+
+    return StrategyResult(
+        pd.Series(out, index=df.index),
+        panel={"name": "RVOL", "series": rvol, "levels": [rvol_threshold]}
+    )
 
 STRATEGIES = {
     "Moving Average Crossover": sma_crossover,
     "RSI": rsi_strategy,
     "Bollinger Bands": bollinger_bands,
+    "Relative Volume Breakout": relative_volume_breakout,
+
 }
