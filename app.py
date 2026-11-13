@@ -66,3 +66,44 @@ else:
                   exit_at=sb.radio("Sell when price crosses", ["Middle band", "Upper band"]))
 
 
+#header
+st.markdown(
+    f'<div class="topbar"><span class="brand">QUANTDECK · STRATEGY BACKTESTER</span>'
+    f'<span class="badge">{ticker or "—"}</span><span class="badge">{name}</span>'
+    f'<span class="badge">vs {bench_t or "—"}</span><span class="badge">{period}</span>'
+    f'<span class="badge">All-In / All-Out</span></div>', unsafe_allow_html=True)
+
+#compute 
+try:
+    end = date.today()
+    start = end - timedelta(days=PERIODS[period])
+    raw = load(ticker, start - timedelta(days=WARMUP_DAYS), end)
+    bench_raw = load(bench_t, start - timedelta(days=WARMUP_DAYS), end)
+
+    res = STRATEGIES[name](raw, **params)
+    df, bench = raw.loc[pd.Timestamp(start):], bench_raw.loc[pd.Timestamp(start):]
+    if len(df) < 30:
+        raise ValueError("Not enough data in this period (need at least 30 trading days).")
+
+    equity, trades = run_backtest(df, res.position, cash0, fee)
+    bench_eq, _ = run_backtest(bench, pd.Series(1, index=bench.index), cash0, fee)
+    bench_eq = bench_eq.reindex(equity.index).ffill().bfill()
+except Exception as e:
+    st.error(f"error {e}")
+    st.stop()
+
+sm, bm = compute_metrics(equity, trades), compute_metrics(bench_eq)
+
+#kpi strip
+pct = lambda v: "—" if pd.isna(v) else f"{v:+.1%}" if abs(v) < 10 else f"{v:+.0%}"
+tone = lambda v: "pos" if v > 0 else "neg" if v < 0 else ""
+kpis = [
+    ("Total return", pct(sm["Total Return"]), "big", f"{bench_t}: {pct(bm['Total Return'])}"),
+    ("Sharpe ratio", f"{sm['Sharpe Ratio']:.2f}", "", f"{bench_t}: {bm['Sharpe Ratio']:.2f}"),
+    ("Max drawdown", f"{sm['Max Drawdown']:.1%}", "neg", f"{bench_t}: {bm['Max Drawdown']:.1%}"),
+    ("CAGR", pct(sm["Annualized Return (CAGR)"]), tone(sm["Annualized Return (CAGR)"]),
+     f"{bench_t}: {pct(bm['Annualized Return (CAGR)'])}"),
+    ("Win rate", "—" if pd.isna(sm["Win Rate"]) else f"{sm['Win Rate']:.0%}", "", "closed trades"),
+    ("Trades", f"{sm['Completed Trades']}", "", "round trips"),
+    ("Final value", f"${sm['Final Value']:,.0f}", "", f"{bench_t}: ${bm['Final Value']:,.0f}"),
+]
